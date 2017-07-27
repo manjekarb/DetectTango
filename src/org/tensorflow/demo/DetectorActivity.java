@@ -234,6 +234,11 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   @Override
   public void onImageAvailable(final ImageReader reader) {
+    if (0 == timestamp % 100) {
+      LOGGER.w("onImageAvailable(): [%d] Width x Height = [%d x %d]",
+              timestamp, reader.getWidth(), reader.getHeight());
+    }
+
     Image image = null;
 
     ++timestamp;

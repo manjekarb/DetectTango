@@ -80,6 +80,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     setContentView(R.layout.activity_camera);
+    // setContentView(R.layout.activity_main);
 
     if (hasPermission()) {
       setFragment();
@@ -162,6 +163,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
           uvPixelStride,
           false);
       image.close();
+
 
     } catch (final Exception e) {
       if (image != null) {

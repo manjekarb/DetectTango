@@ -1,0 +1,14 @@
+.gradle/
+.idea/
+assets/LICENSE
+assets/imagenet_comp_graph_label_strings.txt
+assets/multibox_location_priors.txt
+assets/multibox_model.pb
+assets/stylize_quantized.pb
+assets/tensorflow_inception_graph.pb
+assets/thumbnails/
+gradle/
+gradleBuild/
+gradlew
+gradlew.bat
+local.properties
