@@ -65,7 +65,7 @@ if (nativeBuildSystem == 'makefile') {
 // If building with Bazel, this is the location of the bazel binary.
 // NOTE: Bazel does not yet support building for Android on Windows,
 // so in this case the Makefile build must be used as described above.
-def bazelLocation = '/usr/local/bin/bazel'
+def bazelLocation = '/usr/bin/bazel'
 
 // import DownloadModels task
 project.ext.ASSET_DIR = projectDir.toString() + '/assets'
@@ -181,7 +181,7 @@ tasks.whenTaskAdded { task ->
 
 // Download default models; if you wish to use your own models then
 // place them in the "assets" directory and comment out this line.
-apply from: "download-models.gradle"
+// apply from: "download-models.gradle"
 
 
 dependencies {
