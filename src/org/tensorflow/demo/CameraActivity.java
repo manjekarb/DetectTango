@@ -72,6 +72,8 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   protected Runnable postInferenceCallback;
   protected byte[][] yuvBytes=new byte[3][];
   protected int yRowStride;
+  protected DetectorActivity detect;
+
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
@@ -80,13 +82,15 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     setContentView(R.layout.activity_camera);
-    // setContentView(R.layout.activity_main);
+
+    detect = new DetectorActivity(this);
 
     if (hasPermission()) {
       setFragment();
     } else {
       requestPermission();
     }
+
   }
 
   /**
@@ -181,12 +185,14 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   public synchronized void onStart() {
     LOGGER.d("onStart " + this);
     super.onStart();
+
   }
 
   @Override
   public synchronized void onResume() {
     LOGGER.d("onResume " + this);
     super.onResume();
+
 
     handlerThread = new HandlerThread("inference");
     handlerThread.start();

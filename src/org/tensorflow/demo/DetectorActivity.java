@@ -16,6 +16,8 @@
 
 package org.tensorflow.demo;
 
+import android.app.Activity;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -29,11 +31,16 @@ import android.media.Image;
 import android.media.Image.Plane;
 import android.media.ImageReader;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.os.Trace;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.Display;
+
+import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
@@ -48,7 +55,7 @@ import org.tensorflow.demo.R;
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
  * objects.
  */
-public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
+public class DetectorActivity extends Activity implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
 
   // Configuration values for the prepackaged multibox model.
@@ -115,22 +122,66 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private BorderedText borderedText;
 
   private long lastProcessingTimeMs;
+  private Context context;
+  private boolean debug = false;
+  private Handler handler;
+  private HandlerThread handlerThread;
 
-  @Override
+  public DetectorActivity(Context context){
+    this.context = context;
+  }
+
+  public void addCallback(final OverlayView.DrawCallback callback) {
+    final OverlayView overlay = (OverlayView) ((Activity)context).findViewById(R.id.debug_overlay);
+    if (overlay != null) {
+      overlay.addCallback(callback);
+    }
+  }
+
+  protected void runInBackground(final Runnable r) {
+
+    handlerThread = new HandlerThread("inference");
+    handlerThread.start();
+
+    handler = new Handler(handlerThread.getLooper());
+    if (handler != null) {
+      handler.post(r);
+    }
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  protected void fillBytes(final Plane[] planes, final byte[][] yuvBytes) {
+    // Because of the variable row stride it's not possible to know in
+    // advance the actual necessary dimensions of the yuv planes.
+    for (int i = 0; i < planes.length; ++i) {
+      final ByteBuffer buffer = planes[i].getBuffer();
+      if (yuvBytes[i] == null) {
+        LOGGER.d("Initializing buffer %d at size %d", i, buffer.capacity());
+        yuvBytes[i] = new byte[buffer.capacity()];
+      }
+      buffer.get(yuvBytes[i]);
+    }
+  }
+
+
+
   public void onPreviewSizeChosen(final Size size, final int rotation) {
     final float textSizePx =
         TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
+            TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
     borderedText = new BorderedText(textSizePx);
     borderedText.setTypeface(Typeface.MONOSPACE);
 
-    tracker = new MultiBoxTracker(this);
+    tracker = new MultiBoxTracker(context);
 
 
     if (USE_YOLO) {
       detector =
           TensorFlowYoloDetector.create(
-              getAssets(),
+              context.getAssets(),
               YOLO_MODEL_FILE,
               YOLO_INPUT_SIZE,
               YOLO_INPUT_NAME,
@@ -152,7 +203,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     previewWidth = size.getWidth();
     previewHeight = size.getHeight();
 
-    final Display display = getWindowManager().getDefaultDisplay();
+    final Display display = ((Activity)context).getWindowManager().getDefaultDisplay();
     final int screenOrientation = display.getRotation();
 
     LOGGER.i("Sensor orientation: %d, Screen orientation: %d", rotation, screenOrientation);
@@ -174,7 +225,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     frameToCropTransform.invert(cropToFrameTransform);
     yuvBytes = new byte[3][];
 
-    trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
+    trackingOverlay = (OverlayView) ((Activity)context).findViewById(R.id.tracking_overlay);
     trackingOverlay.addCallback(
         new DrawCallback() {
           @Override
@@ -230,9 +281,15 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         });
   }
 
+  public void requestRender() {
+    final OverlayView overlay = (OverlayView) ((Activity)context).findViewById(R.id.debug_overlay);
+    if (overlay != null) {
+      overlay.postInvalidate();
+    }
+  }
+
   OverlayView trackingOverlay;
 
-  @Override
   public void onImageAvailable(final ImageReader reader) {
     if (0 == timestamp % 100) {
       LOGGER.w("onImageAvailable(): [%d] Width x Height = [%d x %d]",
@@ -354,17 +411,17 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   protected  void processImageRGBbytes(int[] rgbBytes ) {}
 
-  @Override
+
   protected int getLayoutId() {
     return R.layout.camera_connection_fragment_tracking;
   }
 
-  @Override
+
   protected Size getDesiredPreviewFrameSize() {
     return DESIRED_PREVIEW_SIZE;
   }
 
-  @Override
+
   public void onSetDebug(final boolean debug) {
     detector.enableStatLogging(debug);
   }
