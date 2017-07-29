@@ -379,7 +379,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
 
   public void onSetDebug(final boolean debug) {}
 
-  @Override
+  /*@Override
   public boolean onKeyDown(final int keyCode, final KeyEvent event) {
     if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
       debug = !debug;
@@ -388,6 +388,9 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
       return true;
     }
     return super.onKeyDown(keyCode, event);
+  }*/
+  public boolean onKeyDown(final int keyCode, final KeyEvent event){
+    return detect.onKeyDown(keyCode,event);
   }
 
   protected abstract void processImageRGBbytes(int[] rgbBytes ) ;

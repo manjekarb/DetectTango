@@ -27,6 +27,7 @@ import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.hardware.Camera;
 import android.media.Image;
 import android.media.Image.Plane;
 import android.media.ImageReader;
@@ -39,6 +40,7 @@ import android.os.Trace;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.Display;
+import android.view.KeyEvent;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -55,7 +57,8 @@ import org.tensorflow.demo.R;
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
  * objects.
  */
-public class DetectorActivity extends Activity implements OnImageAvailableListener {
+public class DetectorActivity extends Activity implements OnImageAvailableListener,Camera.
+        PreviewCallback {
   private static final Logger LOGGER = new Logger();
 
   // Configuration values for the prepackaged multibox model.
@@ -127,6 +130,9 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
   private Handler handler;
   private HandlerThread handlerThread;
 
+  protected Runnable postInferenceCallback;
+
+
   public DetectorActivity(Context context){
     this.context = context;
   }
@@ -166,6 +172,46 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
     }
   }
 
+  @Override
+  public void onPreviewFrame(final byte[] bytes, final Camera camera) {
+    if (computing) {
+      return;
+    }
+    computing = true;
+    yuvBytes[0] = bytes;
+    try {
+      // Initialize the storage bitmaps once when the resolution is known.
+      if (rgbBytes == null) {
+        Camera.Size previewSize = camera.getParameters().getPreviewSize();
+        previewHeight = previewSize.height;
+        previewWidth = previewSize.width;
+        rgbBytes = new int[previewWidth * previewHeight];
+        onPreviewSizeChosen(new Size(previewSize.width, previewSize.height), 90);
+      }
+      ImageUtils.convertYUV420SPToARGB8888(bytes, rgbBytes, previewWidth, previewHeight, false);
+    } catch (final Exception e) {
+      LOGGER.e(e, "Exception!");
+      return;
+    }
+    postInferenceCallback = new Runnable() {
+      @Override
+      public void run() {
+        camera.addCallbackBuffer(bytes);
+      }
+    };
+    processImageRGBbytes(rgbBytes);
+  }
+
+  @Override
+  public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+    if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+      debug = !debug;
+      requestRender();
+      onSetDebug(debug);
+      return true;
+    }
+    return super.onKeyDown(keyCode, event);
+  }
 
 
   public void onPreviewSizeChosen(final Size size, final int rotation) {
