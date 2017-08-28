@@ -74,7 +74,6 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   protected int yRowStride;
   protected DetectorActivity detect;
 
-
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
     LOGGER.d("onCreate " + this);
@@ -90,7 +89,6 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
     } else {
       requestPermission();
     }
-
   }
 
   /**
@@ -168,7 +166,6 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
           false);
       image.close();
 
-
     } catch (final Exception e) {
       if (image != null) {
         image.close();
@@ -185,14 +182,12 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   public synchronized void onStart() {
     LOGGER.d("onStart " + this);
     super.onStart();
-
   }
 
   @Override
   public synchronized void onResume() {
     LOGGER.d("onResume " + this);
     super.onResume();
-
 
     handlerThread = new HandlerThread("inference");
     handlerThread.start();
@@ -379,7 +374,8 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
 
   public void onSetDebug(final boolean debug) {}
 
-  /*@Override
+  /*
+  @Override
   public boolean onKeyDown(final int keyCode, final KeyEvent event) {
     if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
       debug = !debug;
@@ -388,7 +384,9 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
       return true;
     }
     return super.onKeyDown(keyCode, event);
-  }*/
+  }
+  */
+  
   public boolean onKeyDown(final int keyCode, final KeyEvent event){
     return detect.onKeyDown(keyCode,event);
   }
