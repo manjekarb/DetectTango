@@ -47,7 +47,7 @@ def nativeBuildSystem = 'bazel'
 // assumes armeabi-v7a. If building with make, changing this will require
 // editing the Makefile as well.
 // The CMake build has only been tested with armeabi-v7a; others may not work.
-def cpuType = 'armeabi-v7a'
+def cpuType = 'arm64-v8a'
 
 // Output directory in the local directory for packaging into the APK.
 def nativeOutDir = 'libs/' + cpuType
@@ -75,7 +75,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "25.0.2"
+    buildToolsVersion "26.0.1"
 
     if (nativeBuildSystem == 'cmake') {
         defaultConfig {
@@ -133,6 +133,14 @@ android {
         debug.setRoot('build-types/debug')
         release.setRoot('build-types/release')
     }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
 }
 
 task buildNativeBazel(type: Exec) {
@@ -188,4 +196,7 @@ dependencies {
     if (nativeBuildSystem == 'cmake' || nativeBuildSystem == 'none') {
         compile 'org.tensorflow:tensorflow-android:+'
     }
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile 'com.android.support:appcompat-v7:23.0.0'
+    compile files('libs/TangoSDK_Wasat_Java.jar')
 }

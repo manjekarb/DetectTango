@@ -74,7 +74,7 @@ public class ObjectTracker {
    * efficiently into a an array for upload, instead of keeping a duplicate
    * copy in Java.
    */
-  private static final int MAX_FRAME_HISTORY_SIZE = 200;
+  private static final int MAX_FRAME_HISTORY_SIZE = 150;
 
   private static final int DOWNSAMPLE_FACTOR = 2;
 

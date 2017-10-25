@@ -13,22 +13,54 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
-      <org.tensorflow.demo.AutoFitTextureView
-          android:id="@+id/texture"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"/>
+<RelativeLayout
+    android:id="@+id/MainActivityRL"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="640dp"
+    android:layout_height="480dp">
 
-      <org.tensorflow.demo.OverlayView
-          android:id="@+id/tracking_overlay"
+      <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+          android:id="@+id/camFrame"
           android:layout_width="match_parent"
-          android:layout_height="match_parent"/>
+          android:layout_height="match_parent" >
+         <!-- android:layout_width="256dp"
+          android:layout_height="192dp"
+          android:layout_marginRight="30dp"
+          android:layout_alignParentBottom="true" > -->
 
-      <org.tensorflow.demo.OverlayView
-          android:id="@+id/debug_overlay"
-          android:layout_width="match_parent"
-          android:layout_height="match_parent"/>
-</FrameLayout>
+            <android.opengl.GLSurfaceView
+                android:id="@+id/surfaceviewclass"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            </FrameLayout>
+
+      <FrameLayout
+      android:elevation="3dp"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent" >
+         <!-- android:layout_width="256dp"
+          android:layout_height="192dp"
+          android:elevation="3dp"
+          android:layout_marginRight="30dp"
+          android:layout_alignParentBottom="true"> -->
+
+            <org.tensorflow.demo.AutoFitTextureView
+                android:id="@+id/texture"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <org.tensorflow.demo.OverlayView
+                android:id="@+id/tracking_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+
+            <org.tensorflow.demo.OverlayView
+                android:id="@+id/debug_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+      </FrameLayout>
+
+</RelativeLayout>

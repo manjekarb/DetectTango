@@ -45,8 +45,7 @@ import java.nio.ByteBuffer;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 
-public abstract class CameraActivity extends Activity implements OnImageAvailableListener, Camera.
-        PreviewCallback {
+public abstract class CameraActivity extends Activity {
   private static final Logger LOGGER = new Logger();
 
   private static final int PERMISSIONS_REQUEST = 1;
@@ -76,7 +75,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
 
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
-    LOGGER.d("onCreate " + this);
+    /*LOGGER.d("onCreate " + this);
     super.onCreate(null);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
@@ -88,13 +87,21 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
       setFragment();
     } else {
       requestPermission();
-    }
+    }*/
+
+    LOGGER.d("onCreate " + this);
+    super.onCreate(null);
+    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+    setContentView(R.layout.camera_connection_fragment_tracking);
+
+    detect = new DetectorActivity(CameraActivity.this);
   }
 
   /**
    * Callback for android.hardware.Camera API
    */
-  @Override
+  /*@Override
   public void onPreviewFrame(final byte[] bytes, final Camera camera) {
     if (computing) {
       return;
@@ -122,12 +129,12 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
       }
     };
     processImageRGBbytes(rgbBytes);
-  }
+  } */
 
   /**
    * Callback for Camera2 API
    */
-  @Override
+  /*@Override
   public void onImageAvailable(final ImageReader reader) {
     Image image = null;
     //We need wait until we have some size from onPreviewSizeChosen
@@ -176,7 +183,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
     }
     processImageRGBbytes(rgbBytes);
     Trace.endSection();
-  }
+  }*/
 
   @Override
   public synchronized void onStart() {
@@ -198,10 +205,11 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   public synchronized void onPause() {
     LOGGER.d("onPause " + this);
 
-    if (!isFinishing()) {
+
+    /*if (!isFinishing()) {
       LOGGER.d("Requesting finish");
       finish();
-    }
+    }*/
 
     handlerThread.quitSafely();
     try {
@@ -241,7 +249,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
         if (grantResults.length > 0
             && grantResults[0] == PackageManager.PERMISSION_GRANTED
             && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-          setFragment();
+          //setFragment();
         } else {
           requestPermission();
         }
@@ -310,7 +318,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
     return null;
   }
 
-  protected void setFragment() {
+  /*protected void setFragment() {
     String cameraId = chooseCamera();
 
     Fragment fragment;
@@ -339,7 +347,7 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
         .beginTransaction()
         .replace(R.id.container, fragment)
         .commit();
-  }
+  }*/
 
   protected void fillBytes(final Plane[] planes, final byte[][] yuvBytes) {
     // Because of the variable row stride it's not possible to know in
@@ -387,12 +395,9 @@ public abstract class CameraActivity extends Activity implements OnImageAvailabl
   }
   */
   
-  public boolean onKeyDown(final int keyCode, final KeyEvent event){
+  /*public boolean onKeyDown(final int keyCode, final KeyEvent event){
     return detect.onKeyDown(keyCode,event);
-  }
+  }*/
 
-  protected abstract void processImageRGBbytes(int[] rgbBytes ) ;
-  protected abstract void onPreviewSizeChosen(final Size size, final int rotation);
-  protected abstract int getLayoutId();
-  protected abstract Size getDesiredPreviewFrameSize();
+
 }

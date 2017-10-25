@@ -189,6 +189,49 @@ public class MultiBoxTracker {
     }
   }
 
+  public synchronized void drawYolo(final Canvas canvas) {
+    // TODO(andrewharp): This may not work for non-90 deg rotations.
+    /*final float multiplier =
+        Math.min(canvas.getWidth() / (float) frameHeight, canvas.getHeight() / (float) frameWidth);
+    frameToCanvasMatrix =
+        ImageUtils.getTransformationMatrix(
+            frameWidth,
+            frameHeight,
+            (int) (multiplier * frameHeight),
+            (int) (multiplier * frameWidth),
+            sensorOrientation,
+            false);*/
+    final float multiplier =
+            Math.min(canvas.getWidth() / (float) frameWidth, canvas.getHeight() / (float) frameHeight);
+    frameToCanvasMatrix =
+            ImageUtils.getTransformationMatrix(
+                    frameWidth,
+                    frameHeight,
+                    (int) (multiplier * frameWidth),
+                    (int) (multiplier * frameHeight),
+                    sensorOrientation,
+                    false);
+    for (final TrackedRecognition recognition : trackedObjects) {
+      final RectF trackedPos =
+              (objectTracker != null)
+                      ? recognition.trackedObject.getTrackedPositionInPreviewFrame()
+                      : new RectF(recognition.location);
+
+      getFrameToCanvasMatrix().mapRect(trackedPos);
+      boxPaint.setColor(recognition.color);
+
+      final float cornerSize = Math.min(trackedPos.width(), trackedPos.height()) / 8.0f;
+      canvas.drawRoundRect(trackedPos, cornerSize, cornerSize, boxPaint);
+
+      final String labelString =
+              !TextUtils.isEmpty(recognition.title)
+                      ? String.format("%s %.2f", recognition.title, recognition.detectionConfidence)
+                      : String.format("%.2f", recognition.detectionConfidence);
+      borderedText.drawText(canvas, trackedPos.left + cornerSize, trackedPos.bottom, labelString);
+    }
+
+  }
+
   private boolean initialized = false;
 
   public synchronized void onFrame(

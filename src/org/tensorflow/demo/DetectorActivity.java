@@ -57,8 +57,7 @@ import org.tensorflow.demo.R;
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
  * objects.
  */
-public class DetectorActivity extends Activity implements OnImageAvailableListener,Camera.
-        PreviewCallback {
+public class DetectorActivity extends Activity  {
   private static final Logger LOGGER = new Logger();
 
   // Configuration values for the prepackaged multibox model.
@@ -132,17 +131,19 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
 
   protected Runnable postInferenceCallback;
 
+  public volatile int[] argbInt = null;
+
 
   public DetectorActivity(Context context){
     this.context = context;
   }
 
-  public void addCallback(final OverlayView.DrawCallback callback) {
+  /*public void addCallback(final OverlayView.DrawCallback callback) {
     final OverlayView overlay = (OverlayView) ((Activity)context).findViewById(R.id.debug_overlay);
     if (overlay != null) {
       overlay.addCallback(callback);
     }
-  }
+  }*/
 
   protected void runInBackground(final Runnable r) {
 
@@ -172,7 +173,7 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
     }
   }
 
-  @Override
+  /*@Override
   public void onPreviewFrame(final byte[] bytes, final Camera camera) {
     if (computing) {
       return;
@@ -200,7 +201,7 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
       }
     };
     processImageRGBbytes(rgbBytes);
-  }
+  }*/
 
   @Override
   public boolean onKeyDown(final int keyCode, final KeyEvent event) {
@@ -214,7 +215,7 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
   }
 
 
-  public void onPreviewSizeChosen(final Size size, final int rotation) {
+  public void setup() {
     final float textSizePx =
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
@@ -246,15 +247,17 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
               MB_OUTPUT_SCORES_NAME);
     }
 
-    previewWidth = size.getWidth();
-    previewHeight = size.getHeight();
+    previewWidth = DESIRED_PREVIEW_SIZE.getWidth();
+    previewHeight = DESIRED_PREVIEW_SIZE.getHeight();
+    argbInt = new int[previewWidth * previewHeight];
 
-    final Display display = ((Activity)context).getWindowManager().getDefaultDisplay();
-    final int screenOrientation = display.getRotation();
+   // final Display display = ((Activity)context).getWindowManager().getDefaultDisplay();
+   // final int screenOrientation = display.getRotation();
 
-    LOGGER.i("Sensor orientation: %d, Screen orientation: %d", rotation, screenOrientation);
+   // LOGGER.i("Sensor orientation: %d, Screen orientation: %d", rotation, screenOrientation);
 
-    sensorOrientation = rotation + screenOrientation;
+    //sensorOrientation = rotation + screenOrientation;
+    sensorOrientation = 0;
 
     LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
     rgbBytes = new int[previewWidth * previewHeight];
@@ -276,14 +279,15 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
         new DrawCallback() {
           @Override
           public void drawCallback(final Canvas canvas) {
-            tracker.draw(canvas);
+            /*tracker.draw(canvas);
             if (isDebug()) {
               tracker.drawDebug(canvas);
-            }
+            }*/
+            tracker.drawYolo(canvas);
           }
         });
 
-    addCallback(
+    /*addCallback(
         new DrawCallback() {
           @Override
           public void drawCallback(final Canvas canvas) {
@@ -324,7 +328,7 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
 
             borderedText.drawLines(canvas, 10, canvas.getHeight() - 10, lines);
           }
-        });
+        });*/
   }
 
   public void requestRender() {
@@ -336,17 +340,17 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
 
   OverlayView trackingOverlay;
 
-  public void onImageAvailable(final ImageReader reader) {
-    if (0 == timestamp % 100) {
+  public void process() {
+    /*if (0 == timestamp % 100) {
       LOGGER.w("onImageAvailable(): [%d] Width x Height = [%d x %d]",
-              timestamp, reader.getWidth(), reader.getHeight());
-    }
+              timestamp, DESIRED_PREVIEW_SIZE.getWidth(), DESIRED_PREVIEW_SIZE.getHeight());
+    }*/
 
-    Image image = null;
+    //Image image = null;
 
     ++timestamp;
     final long currTimestamp = timestamp;
-
+/*
     try {
       image = reader.acquireLatestImage();
 
@@ -372,10 +376,13 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
       if (computing) {
         image.close();
         return;
-      }
+      }*/
+    if (computing) {
+      return;
+    }
       computing = true;
 
-      final int yRowStride = planes[0].getRowStride();
+      /*final int yRowStride = planes[0].getRowStride();
       final int uvRowStride = planes[1].getRowStride();
       final int uvPixelStride = planes[1].getPixelStride();
       ImageUtils.convertYUV420ToARGB8888(
@@ -399,9 +406,32 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
       LOGGER.e(e, "Exception!");
       Trace.endSection();
       return;
+    }*/
+
+    int previewSize = previewWidth * previewHeight;
+    byte [] yuv420sp = new byte[(previewSize * 3) >>> 1];
+    ImageUtils.convertARGB8888ToYUV420SP(argbInt, yuv420sp, previewWidth, previewHeight);
+
+    for (int m = 0; m < yuv420sp.length; m++) {
+      if (yuv420sp[m] < 0) {
+        int tmp = 256 + yuv420sp[m];
+        tmp /= 2;
+        yuv420sp[m] = (byte) tmp;
+      } else {
+        yuv420sp[m] /= 2;
+      }
     }
 
-    rgbFrameBitmap.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+    tracker.onFrame(
+            previewWidth,
+            previewHeight,
+            640,
+            sensorOrientation,
+            yuv420sp,
+            timestamp);
+    trackingOverlay.postInvalidate();
+
+    rgbFrameBitmap.setPixels(argbInt, 0, previewWidth, 0, 0, previewWidth, previewHeight);
     final Canvas canvas = new Canvas(croppedBitmap);
     canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
 
@@ -411,24 +441,26 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
     }
 
     if (luminance == null) {
-      luminance = new byte[yuvBytes[0].length];
+      //luminance = new byte[yuvBytes[0].length];
+      luminance = new byte[previewSize];
     }
-    System.arraycopy(yuvBytes[0], 0, luminance, 0, luminance.length);
+    //System.arraycopy(yuvBytes[0], 0, luminance, 0, luminance.length);
+    System.arraycopy(yuv420sp, 0, luminance, 0, luminance.length);
 
-    runInBackground(
+    /*runInBackground(
         new Runnable() {
           @Override
-          public void run() {
+          public void run() {*/
             final long startTime = SystemClock.uptimeMillis();
             final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
             lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
 
-            cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
+            /*cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
             final Canvas canvas = new Canvas(cropCopyBitmap);
             final Paint paint = new Paint();
             paint.setColor(Color.RED);
             paint.setStyle(Style.STROKE);
-            paint.setStrokeWidth(2.0f);
+            paint.setStrokeWidth(2.0f);*/
 
             final List<Classifier.Recognition> mappedRecognitions =
                 new LinkedList<Classifier.Recognition>();
@@ -436,7 +468,7 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
             for (final Classifier.Recognition result : results) {
               final RectF location = result.getLocation();
               if (location != null && result.getConfidence() >= MINIMUM_CONFIDENCE) {
-                canvas.drawRect(location, paint);
+                //canvas.drawRect(location, paint);
 
                 cropToFrameTransform.mapRect(location);
                 result.setLocation(location);
@@ -450,22 +482,18 @@ public class DetectorActivity extends Activity implements OnImageAvailableListen
             requestRender();
             computing = false;
           }
-        });
+      /*  });
 
     Trace.endSection();
-  }
+  }*/
 
-  protected  void processImageRGBbytes(int[] rgbBytes ) {}
-
-
-  protected int getLayoutId() {
-    return R.layout.camera_connection_fragment_tracking;
-  }
+  //protected  void processImageRGBbytes(int[] rgbBytes ) {}
 
 
-  protected Size getDesiredPreviewFrameSize() {
-    return DESIRED_PREVIEW_SIZE;
-  }
+  // protected int getLayoutId() {return R.layout.camera_connection_fragment_tracking;}
+
+
+  //protected Size getDesiredPreviewFrameSize() {return DESIRED_PREVIEW_SIZE;}
 
 
   public void onSetDebug(final boolean debug) {
