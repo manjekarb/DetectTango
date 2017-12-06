@@ -25,6 +25,7 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
+import android.graphics.PointF;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.hardware.Camera;
@@ -52,6 +53,7 @@ import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
 import org.tensorflow.demo.tracking.MultiBoxTracker;
 import org.tensorflow.demo.R;
+import org.tensorflow.demo.tracking.ObjectTracker;
 
 /**
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
@@ -88,7 +90,7 @@ public class DetectorActivity extends Activity  {
   private static final int CROP_SIZE = USE_YOLO ? YOLO_INPUT_SIZE : MB_INPUT_SIZE;
 
   // Minimum detection confidence to track a detection.
-  private static final float MINIMUM_CONFIDENCE = USE_YOLO ? 0.25f : 0.1f;
+  private static final float MINIMUM_CONFIDENCE = USE_YOLO ? 0.50f : 0.1f;
 
   private static final boolean MAINTAIN_ASPECT = USE_YOLO;
 
@@ -133,6 +135,13 @@ public class DetectorActivity extends Activity  {
 
   public volatile int[] argbInt = null;
 
+  public List<RectF> rectDepth = new LinkedList<RectF>();
+  public List<PointF> rectDepthxy = new LinkedList<PointF>();
+  private boolean processingRects = false;
+  private Matrix rgbImageToDepthImage = ImageUtils.getTransformationMatrix(
+          640, 480,
+          1920, 1080,
+          0, true);
 
   public DetectorActivity(Context context){
     this.context = context;
@@ -284,51 +293,26 @@ public class DetectorActivity extends Activity  {
               tracker.drawDebug(canvas);
             }*/
             tracker.drawYolo(canvas);
+            if(!tracker.rectDepth.isEmpty() && !processingRects) {
+              rectDepth = tracker.rectDepth;
+              //LOGGER.i("rect(0): %s", tracker.rectDepth.get(0));
+            }
           }
         });
 
-    /*addCallback(
-        new DrawCallback() {
-          @Override
-          public void drawCallback(final Canvas canvas) {
-            if (!isDebug()) {
-              return;
-            }
-            final Bitmap copy = cropCopyBitmap;
-            if (copy == null) {
-              return;
-            }
+  }
 
-            final int backgroundColor = Color.argb(100, 0, 0, 0);
-            canvas.drawColor(backgroundColor);
-
-            final Matrix matrix = new Matrix();
-            final float scaleFactor = 2;
-            matrix.postScale(scaleFactor, scaleFactor);
-            matrix.postTranslate(
-                canvas.getWidth() - copy.getWidth() * scaleFactor,
-                canvas.getHeight() - copy.getHeight() * scaleFactor);
-            canvas.drawBitmap(copy, matrix, new Paint());
-
-            final Vector<String> lines = new Vector<String>();
-            if (detector != null) {
-              final String statString = detector.getStatString();
-              final String[] statLines = statString.split("\n");
-              for (final String line : statLines) {
-                lines.add(line);
-              }
-            }
-            lines.add("");
-
-            lines.add("Frame: " + previewWidth + "x" + previewHeight);
-            lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
-            lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
-            lines.add("Rotation: " + sensorOrientation);
-            lines.add("Inference time: " + lastProcessingTimeMs + "ms");
-
-            borderedText.drawLines(canvas, 10, canvas.getHeight() - 10, lines);
-          }
-        });*/
+  public void processRects(){
+    processingRects = true;
+    rectDepthxy.clear();
+    //LOGGER.i("Orig coord: %s",rectDepth.get(0));
+    for(RectF rect : rectDepth){
+      //LOGGER.i("Orig coord: %s",rect);
+      rgbImageToDepthImage.mapRect(rect);
+      rectDepthxy.add(new PointF(rect.centerX()/1920.0f,rect.centerY()/1080.0f));
+    }
+    processingRects = false;
+    //LOGGER.i("Normalized coord: %s",rectDepthxy.get(0));
   }
 
   public void requestRender() {
@@ -340,15 +324,42 @@ public class DetectorActivity extends Activity  {
 
   OverlayView trackingOverlay;
 
+  public void processPerFrame(){
+
+    ++timestamp;
+    //long timeStart = SystemClock.uptimeMillis();
+    int previewSize = previewWidth * previewHeight;
+    byte [] yuv420sp = new byte[(previewSize * 3) >>> 1];
+    //byte [] y = new byte[previewSize];
+    ImageUtils.convertARGB8888ToYUV420SP(argbInt, yuv420sp, previewWidth, previewHeight);
+   /* for(int i = 0; i < previewSize; ++i){
+      y[i] = yuv420sp[i];
+    } */
+
+    tracker.onFrame(
+            previewWidth,
+            previewHeight,
+            640,
+            sensorOrientation,
+            yuv420sp,
+            timestamp);
+    trackingOverlay.postInvalidate();
+
+    //long processTime = SystemClock.uptimeMillis() - timeStart;
+    //LOGGER.i("process time: %d",processTime);
+
+  }
+
   public void process() {
     /*if (0 == timestamp % 100) {
       LOGGER.w("onImageAvailable(): [%d] Width x Height = [%d x %d]",
               timestamp, DESIRED_PREVIEW_SIZE.getWidth(), DESIRED_PREVIEW_SIZE.getHeight());
     }*/
 
+    //LOGGER.i("Process() started %d", timestamp);
     //Image image = null;
 
-    ++timestamp;
+    //++timestamp;
     final long currTimestamp = timestamp;
 /*
     try {
@@ -377,6 +388,29 @@ public class DetectorActivity extends Activity  {
         image.close();
         return;
       }*/
+    /*int previewSize = previewWidth * previewHeight;
+    byte [] yuv420sp = new byte[(previewSize * 3) >>> 1];
+    ImageUtils.convertARGB8888ToYUV420SP(argbInt, yuv420sp, previewWidth, previewHeight);*/
+
+   /* for (int m = 0; m < yuv420sp.length; m++) {
+      if (yuv420sp[m] < 0) {
+        int tmp = 256 + yuv420sp[m];
+        tmp /= 2;
+        yuv420sp[m] = (byte) tmp;
+      } else {
+        yuv420sp[m] /= 2;
+      }
+    }*/
+
+   /* tracker.onFrame(
+            previewWidth,
+            previewHeight,
+            640,
+            sensorOrientation,
+            yuv420sp,
+            timestamp);
+    trackingOverlay.postInvalidate();*/
+
     if (computing) {
       return;
     }
@@ -411,7 +445,7 @@ public class DetectorActivity extends Activity  {
     int previewSize = previewWidth * previewHeight;
     byte [] yuv420sp = new byte[(previewSize * 3) >>> 1];
     ImageUtils.convertARGB8888ToYUV420SP(argbInt, yuv420sp, previewWidth, previewHeight);
-
+/*
     for (int m = 0; m < yuv420sp.length; m++) {
       if (yuv420sp[m] < 0) {
         int tmp = 256 + yuv420sp[m];
@@ -421,15 +455,15 @@ public class DetectorActivity extends Activity  {
         yuv420sp[m] /= 2;
       }
     }
-
-    tracker.onFrame(
+*/
+    /*tracker.onFrame(
             previewWidth,
             previewHeight,
             640,
             sensorOrientation,
             yuv420sp,
             timestamp);
-    trackingOverlay.postInvalidate();
+    trackingOverlay.postInvalidate();*/
 
     rgbFrameBitmap.setPixels(argbInt, 0, previewWidth, 0, 0, previewWidth, previewHeight);
     final Canvas canvas = new Canvas(croppedBitmap);
@@ -469,7 +503,7 @@ public class DetectorActivity extends Activity  {
               final RectF location = result.getLocation();
               if (location != null && result.getConfidence() >= MINIMUM_CONFIDENCE) {
                 //canvas.drawRect(location, paint);
-
+                LOGGER.i("(416x416: ",location);
                 cropToFrameTransform.mapRect(location);
                 result.setLocation(location);
                 mappedRecognitions.add(result);

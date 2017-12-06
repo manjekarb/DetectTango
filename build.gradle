@@ -35,6 +35,7 @@ buildscript {
 
 allprojects {
     repositories {
+        mavenLocal()
         jcenter()
     }
 }
@@ -198,5 +199,9 @@ dependencies {
     }
     compile fileTree(include: ['*.jar'], dir: 'libs')
     compile 'com.android.support:appcompat-v7:23.0.0'
-    compile files('libs/TangoSDK_Wasat_Java.jar')
+    //compile files('libs/tango_java_lib.jar')
+    compile "com.google.tango:sdk-base:1.55"
+    compile "com.google.tango:sdk-support:1.55"
+    compile "com.google.tango:sdk-depth-interpolation:1.55"
+    compile "com.google.tango:sdk-transform-helpers:1.55"
 }

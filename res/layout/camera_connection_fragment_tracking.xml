@@ -23,8 +23,8 @@
 
       <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
           android:id="@+id/camFrame"
-          android:layout_width="match_parent"
-          android:layout_height="match_parent" >
+          android:layout_width="640dp"
+          android:layout_height="480dp" >
          <!-- android:layout_width="256dp"
           android:layout_height="192dp"
           android:layout_marginRight="30dp"
@@ -39,8 +39,8 @@
 
       <FrameLayout
       android:elevation="3dp"
-      android:layout_width="match_parent"
-      android:layout_height="match_parent" >
+      android:layout_width="640dp"
+      android:layout_height="480dp" >
          <!-- android:layout_width="256dp"
           android:layout_height="192dp"
           android:elevation="3dp"
@@ -54,8 +54,8 @@
 
             <org.tensorflow.demo.OverlayView
                 android:id="@+id/tracking_overlay"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
+                android:layout_width="640dp"
+                android:layout_height="480dp"/>
 
             <org.tensorflow.demo.OverlayView
                 android:id="@+id/debug_overlay"

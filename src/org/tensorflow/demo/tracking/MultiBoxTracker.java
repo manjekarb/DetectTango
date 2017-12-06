@@ -23,6 +23,7 @@ import android.graphics.Paint;
 import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 import android.graphics.Paint.Style;
+import android.graphics.PointF;
 import android.graphics.RectF;
 import android.text.TextUtils;
 import android.util.Pair;
@@ -32,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import org.tensorflow.demo.Classifier.Recognition;
+import org.tensorflow.demo.MainActivity;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
 import org.tensorflow.demo.env.Logger;
@@ -59,7 +61,8 @@ public class MultiBoxTracker {
   private static final float MIN_CORRELATION = 0.3f;
 
   private static final int[] COLORS = {
-    Color.BLUE, Color.RED, Color.GREEN, Color.YELLOW, Color.CYAN, Color.MAGENTA
+    Color.BLUE, Color.RED, Color.GREEN, Color.YELLOW, Color.CYAN, Color.MAGENTA,
+          /*Color.GRAY, Color.WHITE, Color.LTGRAY, Color.BLACK*/
   };
 
   private final Queue<Integer> availableColors = new LinkedList<Integer>();
@@ -67,6 +70,8 @@ public class MultiBoxTracker {
   public ObjectTracker objectTracker;
 
   final List<Pair<Float, RectF>> screenRects = new LinkedList<Pair<Float, RectF>>();
+
+  public List<RectF> rectDepth = new LinkedList<RectF>();
 
   private static class TrackedRecognition {
     ObjectTracker.TrackedObject trackedObject;
@@ -201,6 +206,7 @@ public class MultiBoxTracker {
             (int) (multiplier * frameWidth),
             sensorOrientation,
             false);*/
+    rectDepth.clear();
     final float multiplier =
             Math.min(canvas.getWidth() / (float) frameWidth, canvas.getHeight() / (float) frameHeight);
     frameToCanvasMatrix =
@@ -217,11 +223,15 @@ public class MultiBoxTracker {
                       ? recognition.trackedObject.getTrackedPositionInPreviewFrame()
                       : new RectF(recognition.location);
 
+
+      //logger.i("Added rect: %s",trackedPos); Correct at this point!
+      rectDepth.add(new RectF(trackedPos));
       getFrameToCanvasMatrix().mapRect(trackedPos);
       boxPaint.setColor(recognition.color);
 
       final float cornerSize = Math.min(trackedPos.width(), trackedPos.height()) / 8.0f;
       canvas.drawRoundRect(trackedPos, cornerSize, cornerSize, boxPaint);
+
 
       final String labelString =
               !TextUtils.isEmpty(recognition.title)
