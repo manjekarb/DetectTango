@@ -34,19 +34,31 @@ import android.media.Image.Plane;
 import android.media.ImageReader;
 import android.media.ImageReader.OnImageAvailableListener;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.os.Trace;
+import android.util.Base64;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.KeyEvent;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Vector;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.tensorflow.demo.OverlayView.DrawCallback;
 import org.tensorflow.demo.env.BorderedText;
 import org.tensorflow.demo.env.ImageUtils;
@@ -54,6 +66,22 @@ import org.tensorflow.demo.env.Logger;
 import org.tensorflow.demo.tracking.MultiBoxTracker;
 import org.tensorflow.demo.R;
 import org.tensorflow.demo.tracking.ObjectTracker;
+import android.util.Log;
+//import org.xerial.snappy.Snappy;
+import com.google.gson.Gson;
+import com.jiechic.library.android.snappy.Snappy;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.JsonHttpResponseHandler;
+
+import cz.msebera.android.httpclient.Header;
+import cz.msebera.android.httpclient.entity.StringEntity;
+import cz.msebera.android.httpclient.message.BasicHeader;
+import cz.msebera.android.httpclient.protocol.HTTP;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
@@ -134,6 +162,8 @@ public class DetectorActivity extends Activity  {
   protected Runnable postInferenceCallback;
 
   public volatile int[] argbInt = null;
+  public String mEncoded;
+  private byte[] mcompressed;
 
   public List<RectF> rectDepth = new LinkedList<RectF>();
   public List<PointF> rectDepthxy = new LinkedList<PointF>();
@@ -146,6 +176,7 @@ public class DetectorActivity extends Activity  {
   public DetectorActivity(Context context){
     this.context = context;
   }
+
 
   /*public void addCallback(final OverlayView.DrawCallback callback) {
     final OverlayView overlay = (OverlayView) ((Activity)context).findViewById(R.id.debug_overlay);
@@ -225,6 +256,8 @@ public class DetectorActivity extends Activity  {
 
 
   public void setup() {
+    //AndroidNetworking.setParserFactory(new JacksonParserFactory());
+
     final float textSizePx =
         TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, context.getResources().getDisplayMetrics());
@@ -350,6 +383,8 @@ public class DetectorActivity extends Activity  {
 
   }
 
+  int flag = 0;
+
   public void process() {
     /*if (0 == timestamp % 100) {
       LOGGER.w("onImageAvailable(): [%d] Width x Height = [%d x %d]",
@@ -465,7 +500,85 @@ public class DetectorActivity extends Activity  {
             timestamp);
     trackingOverlay.postInvalidate();*/
 
-    rgbFrameBitmap.setPixels(argbInt, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    if(flag == 5){
+      flag = 0;
+      try{
+
+        long startTime = System.currentTimeMillis();
+        rgbFrameBitmap.setPixels(argbInt, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+        long time1 = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("setPixels Time: %d",time1-startTime));
+        rgbFrameBitmap.compress(Bitmap.CompressFormat.JPEG,99, out);
+        long time2 = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("JPEGCompression Time: %d",time2-time1));
+        mcompressed = Snappy.compress(out.toByteArray());
+        long time3 = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("Snappy Compression Time: %d",time3-time2));
+        mEncoded = Base64.encodeToString(mcompressed,Base64.DEFAULT);
+        final long endTime = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("Base64 Time: %d",endTime-time3));
+
+        final String requestType = "application/json; charset=utf-8";
+        // AsyncHttpClient client = new AsyncHttpClient();
+        LinkedHashMap<String, String> requestMap = new LinkedHashMap<>();
+        requestMap.put("img", mEncoded);
+        Gson gson = new Gson();
+        String requestString = gson.toJson(requestMap);
+        // StringEntity json = new StringEntity(requestString, "UTF-8");
+        // json.setContentType(new BasicHeader(HTTP.CONTENT_TYPE, requestType));
+        MediaType json = MediaType.parse(requestType);
+        OkHttpClient client = new OkHttpClient();
+
+        final long end_endTime = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("Prep Time: %d",end_endTime-endTime));
+
+        JSONObject response = new JSONObject();
+        try {
+          RequestBody body = RequestBody.create(json, requestString);
+          Request request = new Request.Builder()
+                  .url("http://134.74.112.32:5000/api/detect/")
+                  .post(body)
+                  .build();
+          Response r = client.newCall(request).execute();
+          if (r.isSuccessful()) {
+            response = new JSONObject(r.body().string());
+            r.close();
+          }
+        } catch (IOException | JSONException e) {
+          e.printStackTrace();
+        }
+
+        final long end__end_endTime = System.currentTimeMillis();
+        Log.i("DetectorActivity",String.format("ACTUAL Request Time: %d",end__end_endTime-end_endTime));
+
+        try {
+          Log.d("DetectorActivity",response.toString());
+          JSONArray predictions = response.getJSONArray("preds");
+          double time = response.getDouble("time");
+          for (int i = 0; i < predictions.length(); i++) {
+            JSONObject current_pred = predictions.getJSONObject(i);
+            RectF this_rect = new RectF(current_pred.getInt("l"), current_pred.getInt("t"),
+                    current_pred.getInt("r"), current_pred.getInt("b"));
+            int class_num = current_pred.getInt("class");
+            double confidence = current_pred.getDouble("conf");
+            Log.d("DetectorActivity", String.format("Pred. %d: %s, class: %d, conf: %1.6f raw time: %1.6f", i, this_rect.toShortString(), class_num, confidence,time));
+          }
+          Log.d("DetectorActivity", String.format("Parse time: %d", System.currentTimeMillis()-end__end_endTime));
+        } catch (JSONException e) {
+          e.printStackTrace();
+        }
+
+        Log.d("DetectorActivity", String.format("TOTAL time: %d", System.currentTimeMillis()-startTime));
+
+      }
+      catch(Exception e){
+        e.printStackTrace();
+        return;
+      }
+    }
+    ++flag;
+
     final Canvas canvas = new Canvas(croppedBitmap);
     canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
 

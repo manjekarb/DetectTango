@@ -20,6 +20,7 @@ import android.graphics.Matrix;
 import android.os.Environment;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 
 /**
  * Utility class for manipulating images.
@@ -86,6 +87,30 @@ public class ImageUtils {
       bitmap.compress(Bitmap.CompressFormat.PNG, 99, out);
       out.flush();
       out.close();
+    } catch (final Exception e) {
+      LOGGER.e(e, "Exception!");
+    }
+  }
+
+  public static void saveTxt(String input){
+    final String root =
+            Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "tensorflow";
+    final File myDir = new File(root);
+    if (!myDir.mkdirs()) {
+      LOGGER.i("Make dir failed");
+    }
+
+    final String fname = "sample.txt";
+    final File file = new File(myDir, fname);
+    if (file.exists()) {
+      file.delete();
+    }
+
+    try {
+      FileWriter writer = new FileWriter(file);
+      writer.append(input);
+      writer.flush();
+      writer.close();
     } catch (final Exception e) {
       LOGGER.e(e, "Exception!");
     }

@@ -26,6 +26,7 @@ import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
 import android.view.Display;
+import android.view.Surface;
 import android.widget.Toast;
 import android.view.View;
 import android.speech.tts.TextToSpeech;
@@ -102,6 +103,7 @@ public class MainActivity extends CameraActivity  {
     public void onCreate(Bundle savedInstanceState){
         // GLSurfaceView for RGB color camera
 
+
         tts1=new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
@@ -111,6 +113,25 @@ public class MainActivity extends CameraActivity  {
             }
         });
 
+
+
+        Display display = this.getWindowManager().getDefaultDisplay();
+        mDisplayRotation = display.getRotation();
+        switch (mDisplayRotation){
+            case (0):
+                mDisplayRotation = Surface.ROTATION_0;
+                break;
+            case (90):
+                mDisplayRotation = Surface.ROTATION_90;
+                break;
+            case(180):
+                mDisplayRotation = Surface.ROTATION_180;
+            case(270):
+                mDisplayRotation = Surface.ROTATION_270;
+                break;
+            default:
+                mDisplayRotation = Surface.ROTATION_90;
+        }
 
         rgbImageToDepthImage = ImageUtils.getTransformationMatrix(
                 640, 480,
@@ -131,6 +152,7 @@ public class MainActivity extends CameraActivity  {
                     try {
                         tangoConfig_ = tango_.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
                         tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
+                        tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_AUTORECOVERY, true);
                         tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
                         tangoConfig_.putInt(TangoConfig.KEY_INT_DEPTH_MODE, TangoConfig.TANGO_DEPTH_MODE_POINT_CLOUD);
                         tango_.connect(tangoConfig_);
@@ -151,8 +173,8 @@ public class MainActivity extends CameraActivity  {
             e.printStackTrace();
         }
 
-        cameraTextures_ = new HashMap<>();
         view_ = (GLSurfaceView)findViewById(R.id.surfaceviewclass);
+        //view_.setZOrderMediaOverlay(true);
         view_.setEGLContextClientVersion(2);
         view_.setDebugFlags(GLSurfaceView.DEBUG_CHECK_GL_ERROR);
         view_.setRenderer(renderer_ = new Renderer(this));
@@ -192,6 +214,8 @@ public class MainActivity extends CameraActivity  {
                             tangoConfig_ = tango_.getConfig(TangoConfig.CONFIG_TYPE_DEFAULT);
                             tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_COLORCAMERA, true);
                             tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_AUTORECOVERY, true);
+                            tangoConfig_.putBoolean(TangoConfig.KEY_BOOLEAN_DEPTH, true);
+                            tangoConfig_.putInt(TangoConfig.KEY_INT_DEPTH_MODE, TangoConfig.TANGO_DEPTH_MODE_POINT_CLOUD);
                             tango_.connect(tangoConfig_);
                             startTango();
                             TangoSupport.initialize(tango_);
@@ -237,18 +261,22 @@ public class MainActivity extends CameraActivity  {
 
     public synchronized void attachTexture(final int cameraId, final int textureName) {
         if (textureName > 0) {
+            cameraTextures_.put(cameraId, textureName);
+            Log.i("MainActivity","added to textures buffer");
             // Link the texture with Tango if the texture changes after
             // Tango is connected. This generally doesn't happen but
             // technically could because they happen in separate
             // threads. Otherwise the link will be made in startTango().
-            if(cameraTextures_ != null && tango_ != null) {
-                if (tangoConnected_ && cameraTextures_.get(cameraId) != textureName)
+            if (cameraTextures_ != null && tango_ != null) {
+                if (tangoConnected_ && cameraTextures_.get(cameraId) != textureName) {
                     tango_.connectTextureId(cameraId, textureName);
-                cameraTextures_.put(cameraId, textureName);
+                    Log.i("attachTexture",String.format("cameraId: %d  textureName: %s",cameraId,textureName));
+                }
             }
         }
-        else
+        else {
             cameraTextures_.remove(cameraId);
+        }
     }
 
     public synchronized void updateTexture(int cameraId) {
@@ -285,13 +313,14 @@ public class MainActivity extends CameraActivity  {
             tangoConnected_ = true;
             Log.i("startTango", "Tango Connected");
 
-            Display display = getWindowManager().getDefaultDisplay();
-            mDisplayRotation = display.getRotation();
+
 
             // Attach cameras to textures.
             synchronized(this) {
-                for (Map.Entry<Integer, Integer> entry : cameraTextures_.entrySet())
+                for (Map.Entry<Integer, Integer> entry : cameraTextures_.entrySet()) {
                     tango_.connectTextureId(entry.getKey(), entry.getValue());
+                    Log.i("attachTexture",String.format("cameraId: %d  textureName: %s",entry.getKey(),entry.getValue()));
+                }
             }
 
             // Attach Tango listener.
@@ -319,6 +348,7 @@ public class MainActivity extends CameraActivity  {
                 @Override
                 public void onFrameAvailable(int i) {
                     //Log.i("onFrameAvailabe", "Main onFrameAvailabe called");
+                    Log.i("onFrameAvailable",String.format("cameraid: %d",i));
                     if (i == TangoCameraIntrinsics.TANGO_CAMERA_COLOR) {
                         // mColorCameraPreview.onFrameAvailable();
                         view_.requestRender();

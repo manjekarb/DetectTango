@@ -24,19 +24,23 @@ getProject().setBuildDir('gradleBuild')
 
 buildscript {
     repositories {
+        mavenCentral()
         jcenter()
+        google()
     }
 
     dependencies {
         classpath 'com.android.tools.build:gradle:2.3.0'
+        //classpath 'org.xerial.snappy:snappy-java:1.1.7.1'
         classpath 'org.apache.httpcomponents:httpclient:4.5.2'
     }
 }
 
 allprojects {
     repositories {
-        mavenLocal()
+        mavenCentral()
         jcenter()
+        google()
     }
 }
 
@@ -75,7 +79,7 @@ project.ext.TMP_DIR   = project.buildDir.toString() + '/downloads'
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
+    compileSdkVersion 27
     buildToolsVersion "26.0.1"
 
     if (nativeBuildSystem == 'cmake') {
@@ -197,11 +201,18 @@ dependencies {
     if (nativeBuildSystem == 'cmake' || nativeBuildSystem == 'none') {
         compile 'org.tensorflow:tensorflow-android:+'
     }
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support:appcompat-v7:23.0.0'
-    //compile files('libs/tango_java_lib.jar')
+    //compile fileTree(include: '*.jar', dir: 'libs')
+    //compile 'org.xerial.snappy:snappy-java:1.1.7.1'
+    compile 'com.jiechic.android.library:snappy-android:1.1.7'
+    compile 'com.android.support:appcompat-v7:27.0.2'
+    //compile files('libs/snappy-java-1.1.7.1.jar',)
+    //compile project (":snappyjava")
     compile "com.google.tango:sdk-base:1.55"
     compile "com.google.tango:sdk-support:1.55"
     compile "com.google.tango:sdk-depth-interpolation:1.55"
     compile "com.google.tango:sdk-transform-helpers:1.55"
+    compile "com.loopj.android:android-async-http:1.4.9"
+    compile 'com.squareup.okhttp3:okhttp:3.10.0'
+    compile "com.google.code.gson:gson:2.8.2"
+
 }

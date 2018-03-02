@@ -4,7 +4,9 @@ package org.tensorflow.demo;
 import android.graphics.Point;
 import android.opengl.GLES11Ext;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
 
+import com.google.atap.tangoservice.Tango;
 import com.google.atap.tangoservice.TangoCameraIntrinsics;
 
 import java.nio.ByteBuffer;
@@ -142,6 +144,7 @@ class Renderer implements GLSurfaceView.Renderer {
 
       // Connect the texture to Tango.
       activity_.attachTexture(TangoCameraIntrinsics.TANGO_CAMERA_COLOR, videoTextureName_);
+      Log.i("Renderer",String.format("cameraid: %d texturename: %d", TangoCameraIntrinsics.TANGO_CAMERA_COLOR,videoTextureName_));
 
       // Prepare the shader program.
       videoProgram_ = createShaderProgram(videoVertexSource, videoFragmentSource);
@@ -269,6 +272,7 @@ class Renderer implements GLSurfaceView.Renderer {
       // Save current viewport and change to offscreen size.
       IntBuffer viewport = IntBuffer.allocate(4);
       glGetIntegerv(GL_VIEWPORT, viewport);
+      //glViewport(0, 0, offscreenSize_.x, offscreenSize_.y);
       glViewport(0, 0, offscreenSize_.x, offscreenSize_.y);
 
       // Render in capture mode. Setting this flags tells the shader
